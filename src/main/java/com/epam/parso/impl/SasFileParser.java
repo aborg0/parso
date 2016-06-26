@@ -16,26 +16,27 @@
 
 package com.epam.parso.impl;
 
-import com.epam.parso.Column;
-import com.epam.parso.SasFileProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-
 import java.io.DataInputStream;
-import java.io.InputStream;
-import java.io.IOException;
 import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Map;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.epam.parso.Column;
+import com.epam.parso.SasFileProperties;
 
 /**
  * This is a class that parses sas7bdat files. When parsing a sas7bdat file, to interact with the library,
@@ -847,6 +848,51 @@ public final class SasFileParser {
      */
     SasFileProperties getSasFileProperties() {
         return sasFileProperties;
+    }
+
+    /**
+     * @param format The format to test.
+     * @return It is a date/time format.
+     * @since 2.1
+     */
+    public static boolean isDateTime(String format) {
+        if (isDate(format)) {
+            return false;
+        }
+        for (Pattern pattern : SasFileConstants.DATE_TIME_FORMAT_PATTERNS) {
+            if (pattern.matcher(format).matches()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param format The format to test.
+     * @return It is a date format (no time).
+     * @since 2.1
+    */
+    public static boolean isDate(String format) {
+        for (Pattern pattern : SasFileConstants.DATE_FORMAT_PATTERNS) {
+            if (pattern.matcher(format).matches()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param format The format to test.
+     * @return It is a time format (no date).
+     * @since 2.1
+     */
+    public static boolean isTime(String format) {
+        for (Pattern pattern : SasFileConstants.TIME_FORMAT_PATTERNS) {
+            if (pattern.matcher(format).matches()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

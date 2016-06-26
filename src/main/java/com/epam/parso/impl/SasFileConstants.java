@@ -19,6 +19,7 @@ package com.epam.parso.impl;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * This is an class to store constants for parsing the sas7bdat file (byte offsets, column formats, accuracy) as well as
@@ -779,13 +780,56 @@ interface SasFileConstants {
 
     /**
      * The date formats to store the day, month, and year. Appear in the data of the
-     * {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in {@link Column#format}.
+     * {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in {@link com.epam.parso.Column#format}.
      */
     List<String> DATE_FORMAT_STRINGS = Arrays.asList("YYMMDD", "MMDDYY", "DDMMYY", "DATE");
 
     /**
      * The date formats to store the day, month, year, hour, minutes, seconds, and milliseconds. Appear in the data
-     * of the {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in {@link Column#format}.
+     * of the {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in
+     * {@link com.epam.parso.Column#format}.
      */
     List<String> DATE_TIME_FORMAT_STRINGS = Collections.singletonList("DATETIME");
+
+    /**
+     * The date format patterns to store the day, month, and year. Appear in the data of the
+     * {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in {@link com.epam.parso.Column#format}.
+     */
+    List<Pattern> DATE_FORMAT_PATTERNS = Arrays.asList(
+            Pattern.compile("YYMMDD.*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("MMDDYY.*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("DDMMYY.*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("DTDATE.*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("b8601d[an].*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("e8601d[an].*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("[a-z]{3}df.*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("DATE(?:\\d.*)?", Pattern.CASE_INSENSITIVE));
+
+    /**
+     * The date format patterns to store the day, month, year, hour, minutes, seconds, and milliseconds. Appear in the
+     * data of the {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in
+     * {@link com.epam.parso.Column#format}.
+     */
+    List<Pattern> DATE_TIME_FORMAT_PATTERNS = Arrays.asList(
+            Pattern.compile("DATETIME.*", Pattern.CASE_INSENSITIVE),
+                    Pattern.compile("DATEAMPM.*", Pattern.CASE_INSENSITIVE),
+                    Pattern.compile("MDYAMPM.*", Pattern.CASE_INSENSITIVE),
+                    Pattern.compile("[a-z]{3}df.*", Pattern.CASE_INSENSITIVE),
+                    Pattern.compile("(?:d|e|\\$n)8601.*", Pattern.CASE_INSENSITIVE));
+
+    /**
+     * The date formats to store the hour, minutes, seconds, and milliseconds. Appear in the data
+     * of the {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in
+     * {@link com.epam.parso.Column#format}.
+     */
+    List<String> TIME_FORMAT_STRINGS = Arrays.asList("TIME"/*, "hhmmss"?*/);
+
+    /**
+     * The date format patterns to store the hour, minutes, seconds, and milliseconds. Appear in the data
+     * of the {@link SasFileParser.FormatAndLabelSubheader} subheader and are stored in
+     * {@link com.epam.parso.Column#format}.
+     */
+    List<Pattern> TIME_FORMAT_PATTERNS = Arrays.asList(
+            Pattern.compile("TIME.*", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("hhmm.*", Pattern.CASE_INSENSITIVE));
 }
