@@ -134,6 +134,10 @@ public final class SasFileParser {
      * Every class has an overridden function that processes the related subheader type.
      */
     private final Map<SubheaderIndexes, ProcessingSubheader> subheaderIndexToClass;
+
+    /** The current row index. */
+    private long row = -1L;
+
     /**
      * Default encoding for output strings.
      */
@@ -274,20 +278,20 @@ public final class SasFileParser {
         List<byte[]> vars = getBytesFromFile(offset, length);
 
         sasFileProperties.setEndianness(vars.get(0)[0]);
-        sasFileProperties.setName(bytesToString(vars.get(1)).trim());
-        sasFileProperties.setFileType(bytesToString(vars.get(2)).trim());
+        sasFileProperties.setName(bytesToString(vars.get(1), encoding).trim());
+        sasFileProperties.setFileType(bytesToString(vars.get(2), encoding).trim());
         sasFileProperties.setDateCreated(bytesToDateTime(vars.get(3)));
         sasFileProperties.setDateModified(bytesToDateTime(vars.get(4)));
         sasFileProperties.setHeaderLength(bytesToInt(vars.get(5)));
         sasFileProperties.setPageLength(bytesToInt(vars.get(6)));
         sasFileProperties.setPageCount(bytesToLong(vars.get(7)));
-        sasFileProperties.setSasRelease(bytesToString(vars.get(8)).trim());
-        sasFileProperties.setServerType(bytesToString(vars.get(9)).trim());
-        sasFileProperties.setOsType(bytesToString(vars.get(10)).trim());
+        sasFileProperties.setSasRelease(bytesToString(vars.get(8), encoding).trim());
+        sasFileProperties.setServerType(bytesToString(vars.get(9), encoding).trim());
+        sasFileProperties.setOsType(bytesToString(vars.get(10), encoding).trim());
         if (vars.get(12)[0] != 0) {
-            sasFileProperties.setOsName(bytesToString(vars.get(12)).trim());
+            sasFileProperties.setOsName(bytesToString(vars.get(12), encoding).trim());
         } else {
-            sasFileProperties.setOsName(bytesToString(vars.get(11)).trim());
+            sasFileProperties.setOsName(bytesToString(vars.get(11), encoding).trim());
         }
 
         if (sasFileStream != null) {
@@ -457,6 +461,7 @@ public final class SasFileParser {
      * @throws IOException if reading from the {@link SasFileParser#sasFileStream} stream is impossible.
      */
     Object[] readNext() throws IOException {
+        row++;
         if (currentRowInFileIndex++ >= sasFileProperties.getRowCount() || eof) {
             return null;
         }
@@ -480,7 +485,8 @@ public final class SasFileParser {
                         + currentPageSubheadersCount * subheaderPointerLength) % SasFileConstants.BITS_IN_BYTE;
                 currentRow = processByteArrayWithData(bitOffset + SasFileConstants.SUBHEADER_POINTERS_OFFSET
                         + alignCorrection + currentPageSubheadersCount * subheaderPointerLength
-                        + currentRowOnPageIndex++ * sasFileProperties.getRowLength(), sasFileProperties.getRowLength());
+                        + currentRowOnPageIndex++ * sasFileProperties.getRowLength(), sasFileProperties.getRowLength(),
+                        row);
                 if (currentRowOnPageIndex == Math.min(sasFileProperties.getRowCount(),
                         sasFileProperties.getMixPageRowCount())) {
                     readNextPage();
@@ -489,7 +495,8 @@ public final class SasFileParser {
                 break;
             case SasFileConstants.PAGE_DATA_TYPE:
                 currentRow = processByteArrayWithData(bitOffset + SasFileConstants.SUBHEADER_POINTERS_OFFSET
-                        + currentRowOnPageIndex++ * sasFileProperties.getRowLength(), sasFileProperties.getRowLength());
+                        + currentRowOnPageIndex++ * sasFileProperties.getRowLength(), sasFileProperties.getRowLength(),
+                        row);
                 if (currentRowOnPageIndex == currentPageBlockCount) {
                     readNextPage();
                     currentRowOnPageIndex = 0;
@@ -572,9 +579,11 @@ public final class SasFileParser {
      *
      * @param rowOffset - the offset of the row in cachedPage.
      * @param rowLength - the length of the row.
+     * @param row the current row index. Starting from {@code 0}, {@code -1} for header.
      * @return the array of objects storing the data of the row.
      */
-    private Object[] processByteArrayWithData(long rowOffset, long rowLength) {
+    private Object[] processByteArrayWithData(long rowOffset, long rowLength, long row) {
+        //TODO better error messages based on row index.
         Object[] rowElements = new Object[(int) sasFileProperties.getColumnsCount()];
         byte[] temp, source;
         int offset;
@@ -597,16 +606,15 @@ public final class SasFileParser {
                 if (columnsDataLength.get(currentColumnIndex) <= 2) {
                     rowElements[currentColumnIndex] = bytesToShort(temp);
                 } else {
-                    if (columns.get(currentColumnIndex).getFormat().isEmpty()) {
+                    final String format = columns.get(currentColumnIndex).getFormat();
+                    if (format.isEmpty()) {
                         rowElements[currentColumnIndex] = convertByteArrayToNumber(temp);
                     } else {
-                        if (SasFileConstants.DATE_TIME_FORMAT_STRINGS.contains(
-                                columns.get(currentColumnIndex).getFormat())) {
-                            rowElements[currentColumnIndex] = bytesToDateTime(temp);
+                        if (isDate(format)) {
+                            rowElements[currentColumnIndex] = bytesToDate(temp);
                         } else {
-                            if (SasFileConstants.DATE_FORMAT_STRINGS.contains(
-                                    columns.get(currentColumnIndex).getFormat())) {
-                                rowElements[currentColumnIndex] = bytesToDate(temp);
+                            if (isDateTime(format) || isTime(format)) {
+                                rowElements[currentColumnIndex] = bytesToDateTime(temp);
                             } else {
                                 rowElements[currentColumnIndex] = convertByteArrayToNumber(temp);
                             }
@@ -772,10 +780,15 @@ public final class SasFileParser {
      * The function to convert an array of bytes into a string.
      *
      * @param bytes a string represented by an array of bytes.
+     * @param encoding The String encoding to use.
      * @return the conversion result string.
      */
-    private String bytesToString(byte[] bytes) {
-        return new String(bytes);
+    private String bytesToString(byte[] bytes, String encoding) {
+        try {
+            return new String(bytes, encoding);
+        } catch (UnsupportedEncodingException e) {
+            return new String(bytes);
+        }
     }
 
     /**
@@ -1184,7 +1197,7 @@ public final class SasFileParser {
             length[0] = textBlockSize;
             vars = getBytesFromFile(offset, length);
 
-            columnsNamesStrings.add(bytesToString(vars.get(0)));
+            columnsNamesStrings.add(bytesToString(vars.get(0), encoding));
             if (columnsNamesStrings.size() == 1) {
                 String columnName = columnsNamesStrings.get(0);
                 String compessionLiteral = findCompressionLiteral(columnName);
@@ -1369,7 +1382,7 @@ public final class SasFileParser {
          */
         @Override
         public void processSubheader(long subheaderOffset, long subheaderLength) throws IOException {
-            currentRow = processByteArrayWithData(subheaderOffset, subheaderLength);
+            currentRow = processByteArrayWithData(subheaderOffset, subheaderLength, -1);
         }
     }
 }
