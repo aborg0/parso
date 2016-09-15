@@ -3,5 +3,6 @@
    <implementation class="com.epam.parso.impl.SasFileReaderFactoryImpl"/>
    <service>
       <provide interface="com.epam.parso.SasFileReaderFactory"/>
+      <provide interface="com.epam.parso.DateFormatChecker"/>
    </service>
 </scr:component>

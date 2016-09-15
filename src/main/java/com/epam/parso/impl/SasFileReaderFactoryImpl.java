@@ -5,6 +5,7 @@ package com.epam.parso.impl;
 
 import java.io.InputStream;
 
+import com.epam.parso.DateFormatChecker;
 import com.epam.parso.SasFileReader;
 import com.epam.parso.SasFileReaderFactory;
 
@@ -12,7 +13,7 @@ import com.epam.parso.SasFileReaderFactory;
  * @author Gabor Bakos
  *
  */
-public class SasFileReaderFactoryImpl implements SasFileReaderFactory {
+public class SasFileReaderFactoryImpl implements SasFileReaderFactory, DateFormatChecker {
 
     /**
      *
@@ -51,6 +52,30 @@ public class SasFileReaderFactoryImpl implements SasFileReaderFactory {
     @Override
     public SasFileReader create(final InputStream stream, final Boolean byteOutput) {
         return new SasFileReaderImpl(stream, byteOutput);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isDateTime(final String format) {
+        return SasFileParser.isDateTime(format);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isDate(final String format) {
+        return SasFileParser.isDate(format);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isTime(final String format) {
+        return SasFileParser.isTime(format);
     }
 
 }
